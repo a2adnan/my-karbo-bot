@@ -10,6 +10,7 @@ BOT_TOKEN = "9588878f62c6d982f37c79730ca11bcb8725ad20c19f6d869c834b9e7e206c191e7
 
 bot = KarboBot(BOT_TOKEN)
 ws = KarboBotWS(BOT_TOKEN)
+LAST_MESSAGE_ID = None
 
 # الذاكرة المحلية والبيانات ونظام التتبع العكسي الذكي
 PROCESSED_MESSAGE_IDS = set()
@@ -220,6 +221,17 @@ async def trigger_new_quiz(chat_id):
 @ws.on_message
 async def on_message(message):
     global PROCESSED_MESSAGE_IDS, PROCESSED_SYSTEM_IDS, USER_POINTS, USER_NICKNAMES, CURRENT_QUIZ, CURRENT_CHAT_ID, BOT_PHOTO_WAITING, MARK_READ_STATUS, LOG_GROUPS, MESSAGE_COUNT_STATS, MUTED_USERS, ALLOWED_USERS, BOT_LOCKED, CATCHED_MESSAGES, USER_WARNINGS, LAST_MESSAGE_ID
+
+    message_id = getattr(message, 'id', None) or getattr(message, 'message_id', None)
+    if message_id and message_id == LAST_MESSAGE_ID:
+        return
+    if message_id:
+        LAST_MESSAGE_ID = message_id
+
+    nickname = getattr(getattr(message, 'author', None), 'nickname', '') if hasattr(message, 'author') and message.author else ""
+    if nickname == "الـنـخـبة":
+        return
+
     try:
         content, chat_id, nickname, user_id, message_id = "", "", "", "", ""
         raw_reply_id = None
@@ -248,14 +260,6 @@ async def on_message(message):
         content = content.strip() if content else ""
         uid_str = str(user_id).strip() if user_id else ""
 
-        if message_id and message_id == LAST_MESSAGE_ID:
-            return
-        if message_id:
-            LAST_MESSAGE_ID = message_id
-
-        if nickname == "الـنـخـبة":
-            return
-
         if not chat_id:
             return
 
@@ -271,31 +275,28 @@ async def on_message(message):
                 if warning_count == 1:
                     try:
                         await bot.send_message(chat_id, f"⚠️ {nickname} هذا إنذار أول بسبب الألفاظ غير اللائقة. التكرار مرة أخرى يؤدي للطرد.")
-                    except Exception as e:
-                        print(f"[DEV] Send warning message failed: {e}")
+                    except Exception:
+                        pass
                     return
 
                 if warning_count == 2:
                     try:
                         await bot.send_message(chat_id, f"⚠️ {nickname} هذا إنذار ثاني بسبب الألفاظ غير اللائقة. سيتم طردك الآن لأنك لم تلتزم.")
-                    except Exception as e:
-                        print(f"[DEV] Send warning message failed: {e}")
+                    except Exception:
+                        pass
 
-                    print(f"Attempting to kick user: {nickname} with ID: {uid_str}")
                     try:
                         if not hasattr(bot, 'kick_user'):
                             raise AttributeError("bot.kick_user is not available in this KarboAI build")
 
                         await bot.kick_user(chat_id, uid_str)
-                        print(f"[DEV] bot.kick_user succeeded for {nickname} ({uid_str}).")
-                    except Exception as e:
-                        print(f"[DEV] bot.kick_user failed for {nickname} ({uid_str}): {e}")
-                        print(f"[DEV] bot.kick_user details:\n{traceback.format_exc()}")
+                    except Exception:
+                        pass
 
                     try:
                         await bot.send_message(chat_id, f"🚫 تم طرد {nickname} من المجموعة بسبب تكرار الألفاظ غير اللائقة.")
-                    except Exception as e:
-                        print(f"[DEV] Send success/failure message failed: {e}")
+                    except Exception:
+                        pass
 
                 USER_WARNINGS.pop(uid_str, None)
                 return
