@@ -15,7 +15,8 @@ ws = KarboBotWS(BOT_TOKEN)
 PROCESSED_MESSAGE_IDS = set()
 PROCESSED_SYSTEM_IDS = set() # 🛡️ ذاكرة مستقلة حاسمة لمنع سبام وتكرار الترحيب والمغادرة
 CATCHED_MESSAGES = []       # مصفوفة التتبع العكسي لآيديات الرسائل
-CURRENT_CHAT_ID = None 
+CURRENT_CHAT_ID = None
+LAST_MESSAGE_ID = None
 
 # إعدادات الإدارة والتحكم الذكي مالت حجي عدنان
 BOT_PHOTO_WAITING = False
@@ -218,7 +219,7 @@ async def trigger_new_quiz(chat_id):
 
 @ws.on_message
 async def on_message(message):
-    global PROCESSED_MESSAGE_IDS, PROCESSED_SYSTEM_IDS, USER_POINTS, USER_NICKNAMES, CURRENT_QUIZ, CURRENT_CHAT_ID, BOT_PHOTO_WAITING, MARK_READ_STATUS, LOG_GROUPS, MESSAGE_COUNT_STATS, MUTED_USERS, ALLOWED_USERS, BOT_LOCKED, CATCHED_MESSAGES, USER_WARNINGS
+    global PROCESSED_MESSAGE_IDS, PROCESSED_SYSTEM_IDS, USER_POINTS, USER_NICKNAMES, CURRENT_QUIZ, CURRENT_CHAT_ID, BOT_PHOTO_WAITING, MARK_READ_STATUS, LOG_GROUPS, MESSAGE_COUNT_STATS, MUTED_USERS, ALLOWED_USERS, BOT_LOCKED, CATCHED_MESSAGES, USER_WARNINGS, LAST_MESSAGE_ID
     try:
         content, chat_id, nickname, user_id, message_id = "", "", "", "", ""
         raw_reply_id = None
@@ -247,14 +248,18 @@ async def on_message(message):
         content = content.strip() if content else ""
         uid_str = str(user_id).strip() if user_id else ""
 
+        if message_id and message_id == LAST_MESSAGE_ID:
+            return
+        if message_id:
+            LAST_MESSAGE_ID = message_id
+
+        if nickname == "الـنـخـبة":
+            return
+
         if not chat_id:
             return
 
         CURRENT_CHAT_ID = chat_id
-
-        # � Diagnostic output for available bot methods (temporary, to identify the real API names)
-        print("[DEBUG] dir(bot) =", [name for name in dir(bot)])
-        print("[DEBUG] Relevant methods =", [name for name in dir(bot) if any(x in name.lower() for x in ('kick', 'ban', 'remove', 'delete', 'member'))])
 
         # �🚫 [ نظام الشتم المتراكم قبل أي أوامر أخرى ]
         if content and uid_str:
@@ -370,12 +375,10 @@ async def on_message(message):
             if target_uid:
                 target_uid = str(target_uid).strip()
                 if content in ["طرد", "دي"]:
-                    print("[DEBUG] Manual kick path is temporarily disabled to avoid AttributeError.")
                     await bot.send_message(chat_id, f"⚠️ أمر الطرد معطل مؤقتاً حتى نحدد الدالة الصحيحة من مكتبة KarboAI.")
                     return
 
                 if content == "حظر":
-                    print("[DEBUG] Manual ban path is temporarily disabled to avoid AttributeError.")
                     await bot.send_message(chat_id, f"⚠️ أمر الحظر معطل مؤقتاً حتى نحدد الدالة الصحيحة من مكتبة KarboAI.")
                     return
 
